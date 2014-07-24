@@ -1,0 +1,14 @@
+#!/bin/sh
+[ -z "$2" ] && \
+echo "Usage: $0 if0 CONNECTED | DISCONNECTED | stop" && \
+echo " or wpa_cli -a $0" && exit
+case $2 in
+ CONNECTED)
+  udhcpc -i $1
+  ;;
+ stop)
+  wpa_cli -i $1 terminate
+  ;;
+ *) 
+  ;;
+esac
