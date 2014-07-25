@@ -1,17 +1,16 @@
 #!/bin/sh
-#service wpanet
-WL=wlan0
+source /etc/conf.d/wpanet
 
 case "$1" in
   start)
-    for IF in $WL
+    for IF in $IFACES
       do
-        wpa_supplicant -Dwext -i $IF -c /etc/wpa/$IF.conf -B
+        wpa_supplicant ${DRIVER:--Dwext} -i $IF -c /etc/wpa/$IF.conf -B
         wpa_cli -i $IF -a /sbin/wpa_dhcp -B
       done
   ;;
   stop)
-    for IF in $WL
+    for IF in $IFACES
       do
          /sbin/wpa_dhcp $IF stop
       done

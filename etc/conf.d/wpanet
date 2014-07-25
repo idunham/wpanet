@@ -1,0 +1,6 @@
+# /etc/conf.d/wpanet
+
+WPA_CFG=/etc/wpa_supplicant/wpa_supplicant.conf
+#IFACES="wlan0"
+IFACES="`ls -d /sys/class/net/*/wireless /sys/class/net/*/cfg80211|cut -d/ -f5|sort -u|xargs`"
+DRIVER="-Dwext"
