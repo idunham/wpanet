@@ -5,7 +5,7 @@ case "$1" in
   start)
     for IF in $IFACES
       do
-        wpa_supplicant ${DRIVER:--Dwext} -i $IF -c /etc/wpa/$IF.conf -B
+        wpa_supplicant ${DRIVER:--Dwext} -i $IF -c ${WPA_CFG:-/etc/wpa/$IF.conf} -B
         wpa_cli -i $IF -a /sbin/wpa_dhcp -B
       done
   ;;
