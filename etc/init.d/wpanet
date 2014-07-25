@@ -1,0 +1,24 @@
+#!/sbin/runscript
+#service wpanet
+source /etc/conf.d/wpanet
+
+
+start() {
+    for IF in $IFACES
+      do
+        [ -e /sys/class/net/$IF/wireless -o -e /sys/class/net/$IF/phy80211 ] && \
+            wpa_supplicant ${DRIVER:--Dwext} -i $IF -c /etc/wpa/$IF.conf -B && \
+            wpa_cli -i $IF -a /sbin/wpa_dhcp -B || \
+	    echo "Could not start interface: $IF"
+      done
+}
+stop() {
+    for IF in $IFACES
+      do
+         /sbin/wpa_dhcp $IF stop
+      done
+}
+help() {
+    echo "Usage: $0 start | stop to start or stop all interfaces"
+    echo "Use wpa_dhcp if0 stop to stop one interface"
+}
