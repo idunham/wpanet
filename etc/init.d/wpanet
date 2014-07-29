@@ -5,14 +5,20 @@ source /etc/conf.d/wpanet
 get_driver() (
     [ -e /sys/class/net/$1/wireless ] && printf "-Dwext " && exit
     [ -e /sys/class/net/$1/phy80211 ] && printf "-Dnl80211,wext " && exit
-    printf "-Dwired "
+    case `readlink /sys/class/net/$1/device/driver` in
+      */hostap*)
+        printf  "-Dhostap "
+	;;
+      *)
+        printf "-Dwired "
+        ;;
+    esac
 )
 
 start() {
     for IF in $IFACES
       do
-        [ -e /sys/class/net/$IF/wireless -o -e /sys/class/net/$IF/phy80211 ] && \
-            wpa_supplicant ${DRIVER:--Dwext} -i $IF \
+            wpa_supplicant ${DRIVER:-`get_driver $IF`} -i $IF \
 	      -c ${WPA_CFG:-/etc/wpa/$IF.conf} -B && \
             wpa_cli -i $IF -a /sbin/wpa_dhcp -B || \
 	    echo "Could not start interface: $IF"
