@@ -1,0 +1,70 @@
+wpanet - a sysvinit/openrc service for setting up wireless without races.
+
+License:
+I release this code to the public domain under CC0.
+
+What wpanet is:
+wpanet is a script that starts wpa_supplicant and uses the wpa_cli
+"action script" feature to configure each interface as it becomes
+ready.
+The main motivation is to avoid the potential race conditions that
+using two services can cause:
+-many boot scripts will start wpa_supplicant, then run either a
+DHCP client or "ifup -a".
+This may result in trying to get a DHCP lease before connecting, which
+can either slow down boot or, with some drivers, panic the kernel.
+Additionally, this may fail to configure an interface that becomes
+ready after boot.
+-the alternative of starting wpa_cli in its own service could result in a
+delay long enough that the connection is already completed, with the
+consequence that the interface is not configured at boot.
+
+wpanet is not a complete network manager; you will need to configure
+wpa_supplicant yourself, and may also need to configure ifup.
+But if you want to use it in a more complete tool, feel free.
+
+Quick start:
+I'm assuming that wpa_supplicant has a working configuration in 
+/etc/wpa_supplicant/wpa_supplicant.conf, is able to connect, and that 
+you are using standard Linux wireless drivers.
+
+Make sure that /etc/wpa_supplicant/wpa_supplicant.conf has a line like this:
+ctrl_interface=/var/run/wpa_supplicant
+Or like this:
+DIR=/var/run/wpa_supplicant GROUP=network
+
+Make sure that wlan0 or whatever else your wireless interface is called
+is *NOT* configured in /etc/network/interfaces (if you need to use ifup,
+move the relevant stanzas to /etc/wpa/interfaces).
+
+Install sbin/wpa_dhcp to /sbin
+Install etc/conf.d/wpanet to /etc/conf.d/
+Install etc/init.d/wpanet (on OpenRC systems) or sbin/wpanet 
+(on sysvinit-style systems) to /etc/init.d and enable it
+
+At this point, wpanet should be ready to manage a wireless interface via dhcp.
+
+Advanced configuration:
+* To use multiple wpa_supplicant configuration files (for example, if you want
+RADIUS over Ethernet, one wireless card connected to an open wireless network,
+and a second wireless card connected to another network...), you will need to
+do a little configuration:
+ - mkdir /etc/wpa/
+ - for each interface, create a working wpa_supplicant config file named
+   /etc/wpa/<interface>.conf
+   (eg, you might have /etc/wpa/eth0.conf and /etc/wpa/wlan0.conf)
+ - If any of the interfaces do not get picked up by default,
+   set IFACES to a list of all the interfaces you want configured.
+ - Remove/comment out any lines setting DRIVER.
+ - Remove/comment out any lines setting WPA_CFG.
+At this point, you should be ready to test it.
+
+* To get static IP addresses, you will need to use the ifup integration.
+This means:
+ - create /etc/wpa/interfaces
+ - for any interface that you want ifup to configure after wpa_supplicant
+   connects, configure it in /etc/wpa/interfaces as you would in
+   /etc/network/interfaces
+This should be enough configuration for the ifup integration.
+
+
