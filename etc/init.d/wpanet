@@ -2,6 +2,8 @@
 #service wpanet
 source /etc/conf.d/wpanet
 
+extra_commands="help info"
+
 get_driver() (
     [ -e /sys/class/net/$1/wireless ] && printf "-Dwext " && exit
     [ -e /sys/class/net/$1/phy80211 ] && printf "-Dnl80211,wext " && exit
@@ -15,13 +17,27 @@ get_driver() (
     esac
 )
 
+info() {
+    for IF in $IFACES
+      do
+          echo "wpa_supplicant ${DRIVER:-`get_driver $IF`} -i $IF:"
+	  wpa_cli -i $IF status 2>/dev/null | \
+	   sed -ne 's/^wpa_state=\(COMPLETED\)/wpa_stat=e[32m\1e[m/p' \
+	        -e 's/^\(wpa_stat\)e=\(.*\)/\1=e[31\2e[m/p' | \
+	   tr 'e' '\e'|sed -e s/stat/state/g && \
+	  wpa_cli -i $IF status 2>/dev/null | grep -e 'address=' -e '^ssid=' || \
+	  printf '\e[31mInterface is down\e[m\n'
+      done
+}
+
 start() {
     for IF in $IFACES
       do
+            ebegin "Starting wpa_supplicant for $IF"
             wpa_supplicant ${DRIVER:-`get_driver $IF`} -i $IF \
 	      -c ${WPA_CFG:-/etc/wpa/$IF.conf} -B && \
-            wpa_cli -i $IF -a /sbin/wpa_dhcp -B || \
-	    echo "Could not start interface: $IF"
+            wpa_cli -i $IF -a /sbin/wpa_dhcp -B && eend 0 || \
+	    eend $?
       done
 }
 stop() {
@@ -31,6 +47,9 @@ stop() {
       done
 }
 help() {
-    echo "Usage: $0 start | stop to start or stop all interfaces"
-    echo "Use wpa_dhcp if0 stop to stop one interface"
+    echo "Usage: /etc/init.d/wpanet start | stop | info"
+    echo "  info - summarize current state of interfaces"
+    echo "  start - start all interfaces"
+    echo "  stop - stop all interfaces"
+    echo "   (Use wpa_dhcp if0 stop to stop one interface)"
 }
