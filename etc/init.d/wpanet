@@ -2,14 +2,13 @@
 #service wpanet
 source /etc/conf.d/wpanet
 if test -z "$IFACES"
-then export IFACES="`ls -d /sys/class/net/*/wireless /sys/class/net/*/phy80211|cut -d/ -f5|sort -u|xargs`"
+then export IFACES="`ls -d /sys/class/net/*/wireless /sys/class/net/*/phy80211 2>/dev/null|cut -d/ -f5|sort -u|xargs`"
 fi
 
 extra_commands="help info"
 
-depends() {
+depend() {
 	need localmount dbus
-	use logger
 	after bootmisc hwdrivers modules
 	provide wpa_supplicant
 	before dns dhcpd net
