@@ -26,7 +26,7 @@ info() {
           echo "wpa_supplicant ${DRIVER:-`get_driver $IF`} -i $IF:"
 	  wpa_cli -i $IF status 2>/dev/null | \
 	   sed -ne 's/^wpa_state=\(COMPLETED\)/wpa_stat=e[32m\1e[m/p' \
-	        -e 's/^\(wpa_stat\)e=\(.*\)/\1=e[31\2e[m/p' | \
+	        -e 's/^\(wpa_stat\)e=\(.*\)/\1=e[31m\2e[m/p' | \
 	   tr 'e' '\e'|sed -e s/stat/state/g && \
 	  wpa_cli -i $IF status 2>/dev/null | grep -e 'address=' -e '^ssid=' || \
 	  printf '\e[31mInterface is down\e[m\n'
