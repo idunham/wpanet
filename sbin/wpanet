@@ -1,23 +1,95 @@
 #!/bin/sh
+#Shell library for OpenRC compatability
+alias ebegin='echo "$@"...'
+eend() {
+ test 0 -eq $1 && printf '[ok]\n' || printf '[failed]\n'
+ shift
+ test -n "$@" && echo "$@"
+}
+#service wpanet
 source /etc/conf.d/wpanet
+if test -z "$IFACES"
+then export IFACES="`ls -d /sys/class/net/*/wireless /sys/class/net/*/phy80211|cut -d/ -f5|sort -u|xargs`"
+fi
 
-case "$1" in
-  start)
+extra_commands="help info"
+
+get_driver() (
+    [ -e /sys/class/net/$1/wireless ] && printf "-Dwext " && exit
+    [ -e /sys/class/net/$1/phy80211 ] && printf "-Dnl80211,wext " && exit
+    case `readlink /sys/class/net/$1/device/driver` in
+      */hostap*)
+        printf  "-Dhostap "
+	;;
+      *)
+        printf "-Dwired "
+        ;;
+    esac
+)
+
+info() {
     for IF in $IFACES
       do
-        wpa_supplicant ${DRIVER:--Dwext} -i $IF -c ${WPA_CFG:-/etc/wpa/$IF.conf} -B
-        wpa_cli -i $IF -a /sbin/wpa_dhcp -B
+          echo "wpa_supplicant ${DRIVER:-`get_driver $IF`} -i $IF:"
+	  wpa_cli -i $IF status 2>/dev/null | \
+	   sed -ne 's/^wpa_state=\(COMPLETED\)/wpa_stat=e[32m\1e[m/p' \
+	        -e 's/^\(wpa_stat\)e=\(.*\)/\1=e[31m\2e[m/p' | \
+	   tr 'e' '\e'|sed -e s/stat/state/g && \
+	  wpa_cli -i $IF status 2>/dev/null | grep -e 'address=' -e '^ssid=' || \
+	  printf '\e[31mInterface is down\e[m\n'
       done
-  ;;
-  stop)
+}
+
+start() {
+    for IF in $IFACES
+      do
+            ebegin "Starting wpa_supplicant for $IF"
+            wpa_supplicant ${DRIVER:-`get_driver $IF`} -i $IF \
+	      -c ${WPA_CFG:-/etc/wpa/$IF.conf} -B && \
+            wpa_cli -i $IF -a /sbin/wpa_dhcp -B && eend 0 || \
+	    eend $?
+      done
+}
+stop() {
     for IF in $IFACES
       do
          /sbin/wpa_dhcp $IF stop
       done
-  ;;
-  *help)
-    echo "Usage: $0 start | stop to start or stop all interfaces"
-    echo "Use wpa_dhcp if0 stop to stop one interface"
-  ;;
+}
+help() {
+    echo "Usage: /etc/init.d/wpanet start | stop | info"
+    echo "  info - summarize current state of interfaces"
+    echo "  start - start all interfaces"
+    echo "  stop - stop all interfaces"
+    echo "   (Use wpa_dhcp if0 stop to stop interface if0)"
+}
+[ -z "$1" ] && exit 1
+BASENAME=`basename $0`
+case $1 in
+ start)  start
+ ;;
+ restart|force-reload) stop; start
+ ;;
+ stop)  stop 
+ ;;
+ help)
+   case $extra_commands in
+     *help*)  help
+     ;;
+     *) echo -n "Usage: $0 start | stop "
+     echo $extra_commands $extra_started_commands | \
+       sed -e 's/\([^ ]\) \([^ ]\)/\1 | \2/g' -e 's/^\(.\)/| \1/g'
+     ;;
+   esac
+ ;;
+ *)
+   case "$extra_commands $extra_started_commands" in
+     *" $1 "*|"$1 "*|*" $1")
+       $1
+    ;;
+    *) echo "$0: $1 is not supported"
+   esac
+ ;;
 esac
+
 
