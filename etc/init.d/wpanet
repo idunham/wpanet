@@ -1,6 +1,9 @@
 #!/sbin/runscript
 #service wpanet
 source /etc/conf.d/wpanet
+if test -z "$IFACES"
+then export IFACES="`ls -d /sys/class/net/*/wireless /sys/class/net/*/phy80211|cut -d/ -f5|sort -u|xargs`"
+fi
 
 extra_commands="help info"
 
@@ -51,5 +54,5 @@ help() {
     echo "  info - summarize current state of interfaces"
     echo "  start - start all interfaces"
     echo "  stop - stop all interfaces"
-    echo "   (Use wpa_dhcp if0 stop to stop one interface)"
+    echo "   (Use wpa_dhcp if0 stop to stop interface if0)"
 }

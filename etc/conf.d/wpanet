@@ -7,12 +7,14 @@ WPA_CFG=/etc/wpa_supplicant/wpa_supplicant.conf
 
 # IFACES: List of all interfaces to configure.
 # The default is to run a bit of shell that will find all wireless interfaces.
+# For reference, this is:
+# ls -d /sys/class/net/*/wireless /sys/class/net/*/phy80211 |\
+# cut -d/ -f5 | sort -u | xargs
 #
 # If you want to run a router, you must provide a static list of interfaces!
 # Otherwise, wpanet will try to configure the interface that should be 
 # running in mode master.
 #IFACES="wlan0 ath0"
-IFACES="`ls -d /sys/class/net/*/wireless /sys/class/net/*/phy80211|cut -d/ -f5|sort -u|xargs`"
 
 # DRIVER: The wpa_supplicant driver to use.
 # This can be -Dwext for wireless extensions, or -Dnl80211 for netlink.
