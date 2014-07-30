@@ -5,7 +5,7 @@ echo " or wpa_cli -a $0" && exit
 
 # Return 1 if the interface is not configured in /etc/wpa/interfaces
 hasif() (
-  [ -r /etc/wpa/interfaces] || exit 1
+  [ -r /etc/wpa/interfaces ] || exit 1
   grep "^auto $1$" /etc/wpa/interfaces >/dev/null
   exit $?
 )
@@ -16,9 +16,9 @@ case $2 in
     then
       ifup -i /etc/wpa/interfaces $1
     else
-      [ -e /var/run/udhcpc.$1.pid ] && \
+      [ -e "/var/run/udhcpc.$1.pid" ] && \
         kill -USR1 `cat /var/run/udhcpc.$1.pid` 2>/dev/null || {
-          kill -TERM `cat /var/run/udhcpc.$1.pid` 2>/dev/null
+          kill -TERM `cat /var/run/udhcpc.$1.pid 2>/dev/null` 2>/dev/null
           udhcpc -R -p /var/run/udhcpc.$1.pid -i $1 -x "hostname:`hostname`"
 	}
     fi
@@ -29,7 +29,7 @@ case $2 in
       ifdown -i /etc/wpa/interfaces $1
     else
 #     kill -USR2 `cat /var/run/udhcpc.$1.pid` 2>/dev/null
-      kill `cat /var/run/udhcpc.$1.pid` 2>/dev/null
+      kill `cat /var/run/udhcpc.$1.pid 2>/dev/null` 2>/dev/null
     fi
   wpa_cli -i $1 terminate
   ;;
