@@ -7,6 +7,15 @@ fi
 
 extra_commands="help info"
 
+depends() {
+	need localmount dbus
+	use logger
+	after bootmisc hwdrivers modules
+	provide wpa_supplicant
+	before dns dhcpd net
+	keyword -shutdown
+}
+
 get_driver() (
     [ -e /sys/class/net/$1/wireless ] && printf "-Dwext " && exit
     [ -e /sys/class/net/$1/phy80211 ] && printf "-Dnl80211,wext " && exit
