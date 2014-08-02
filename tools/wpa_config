@@ -1,0 +1,238 @@
+#!/bin/sh
+#
+# wpa_config script by Isaac Dunham
+# written and released into public domain under CC0 in 2014
+#
+# I expressly disclaim ANY WARANTEE IMPLIED OR STATED, INCLUDING,
+# BUT NOT LIMITED TO, THE IMPLIED WARANTEES OF MERCHANTABILITY OR
+# FITNESS FOR A PARTICULAR PURPOSE.
+#
+# wpa_config aims to be a dialog-based script for configuring wpa_supplicant
+# with some aspects of a network manager thrown in.
+# However, it stops short at starting/stopping/restarting wpa_supplicant
+# itself; we leave that to system services.
+
+mkdir -m 0700 -p /tmp/wpaconf || rm /tmp/wpaconf &&\
+mkdir -m 0700 -p /tmp/wpaconf || {
+	echo "Cannot obtain private tempdir!"
+	exit 1
+}
+
+#DIALOG must implement:
+# --insecure --output-fd --passwordbox --menu --inputbox --msgbox --fselect
+# --insecure means "show asterisks"; I figure most people want that much acknowledgement.
+# --fselect support is only needed for a couple features (user specified config files)
+
+test -n "$DISPLAY" && DIALOG=`command -v Xdialog`
+test -z "$DIALOG" && DIALOG=`command -v dialog`
+# Unfortunately I have to live with whiptail...
+test -z "$DIALOG" && DIALOG=`command -v whiptail`
+
+newconf(){
+echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=0" >$NEWCF
+}
+
+loadconfig(){
+true >$CTRL
+LOADCONFS="`[ -e /etc/wpa_supplicant/wpa_supplicant.conf ] && echo global /etc/wpa_supplicant/wpa_supplicant.conf`"
+LOADCONFS="$LOADCONFS `[ -e /etc/wpa/$IFCUR.conf ] && echo local /etc/wpa/$IFCUR.conf`"
+$DIALOG --output-fd 3 --menu "Which config file do you want to load?" 0 0 0 \
+	$LOADCONFS other "browse for file" new "no file" 3>$CTRL
+read conf <$CTRL
+case $conf in
+	new)	newconf
+	;;
+	global)	cat /etc/wpa_supplicant/wpa_supplicant.conf >$NEWCF
+	;;
+	local)	cat /etc/wpa/$IFCUR.conf >$NEWCF
+	;;
+	other)	true >$CTRL
+		$DIALOG --output-fd 3 --fselect /etc 20 60 3>$CTRL
+		read conf <$CTRL
+		case "$conf" in
+			*.conf)	true >$NEWCF
+				grep ^ctrl_interface "$conf" >/dev/null || newconf
+				cat "$conf" >>$NEWCF
+			;;
+			*)	$DIALOG --msgbox "No valid config file specified!" 0 0
+			;;
+		esac
+	;;
+esac
+}
+
+saveconfig(){
+true >$CTRL
+$DIALOG --output-fd 3 --menu \
+"Choose a config file to write. WARNING! This WILL IMMEDIATELY OVERWRITE the file!" 0 0 0 \
+	 global /etc/wpa_supplicant/wpa_supplicant.conf \
+	 local /etc/wpa/$IFCUR.conf other "browse for file" 3>$CTRL
+read conf <$CTRL
+case $conf in
+	global)	cat $NEWCF >/etc/wpa_supplicant/wpa_supplicant.conf
+	;;
+	local)	cat $NEWCF >/etc/wpa/$IFCUR.conf
+	;;
+	other)	true >$CTRL
+		$DIALOG --output-fd 3 --fselect /etc 20 60 3>$CTRL
+		read conf <$CTRL
+		case "$conf" in
+			*.conf)	cat $NEWCF >"$conf"
+			;;
+			*)	$DIALOG --msgbox "No valid config file specified!" 0 0
+			;;
+		esac
+	;;
+esac
+}
+
+
+setif(){
+true >$CTRL
+$DIALOG --output-fd 3 --menu "Select an interface:" 0 0 0 `ls /sys/class/net |sed -e 's/^\(.*\)$/\1 \1/g'` 3>$CTRL
+read net <$CTRL
+export IFCUR=${net:-$IFCUR}
+unset net
+}
+
+net_add_open() {
+true >$CTRL
+test -z "$1" && $DIALOG --output-fd 3 --inputbox "Enter the SSID you wish to connect to.\nIf you enter 'any', the computer will\nconnect to any open network." 0 0 any 3>$CTRL
+read net <$CTRL
+test -n "$1" && net=$1
+test -n "$net" || return
+echo "network={" >> $NEWCF
+case $net in
+	any) ;;
+	*) echo '	ssid="'"$net"'"' >>$NEWCF
+	;;
+esac
+echo '	key_mgmt=NONE' >>$NEWCF
+echo '}' >>$NEWCF
+}
+
+net_add_wep(){
+true >$CTRL
+$DIALOG --output-fd 3  --insecure --passwordbox "Enter the WEP key for SSID: $1"  0 0 3>$CTRL
+test `wc -c <$CTRL` -gt 0 || return
+cat >>$NEWCF <<EOF
+network={
+	ssid="$1"
+	key_mgmt=IEEE8021X
+	eap=MD5
+	wep_key0=`cat $CTRL`
+}
+EOF
+echo done >$CTRL
+}
+
+net_add_wpa() {
+true >$CTRL
+$DIALOG --output-fd 3  --insecure --passwordbox "Enter the passphrase for SSID: $1"  0 0 3>$CTRL
+test `wc -c <$CTRL` -gt 0 || return
+wpa_passphrase $1 <$CTRL >>$NEWCF
+echo done >$CTRL
+}
+
+network_add() {
+true >$CTRL
+$DIALOG --output-fd 3 --inputbox "Enter the SSID you wish to connect to." 0 0 3>$CTRL
+read net <$CTRL
+test -n "$net" || return
+true >$CTRL
+$DIALOG --output-fd 3 --menu "Choose the network encryption:" 0 0 0 \
+	No encryption WEP encryption WPA encryption 3>$CTRL || return
+case `cat $CTRL` in
+	No)	net_add_open $net
+	;;
+	WEP)	net_add_wep $net
+	;;
+	WPA)	net_add_wpa $net
+	;;
+esac
+}
+
+#scanner:
+# scan
+# save results to file
+# parse from file
+#Buttons:
+#Refresh/Add/Leave
+# Usage: IFCUR=if0 scanner
+scanner() (
+if test OK != "`wpa_cli -i "$IFCUR" scan `"
+  then
+    $DIALOG --msgbox "wpa_cll status for $IFCUR failed!" 0 0
+    return
+  fi
+net=Rescan
+while test -n "$net"
+do
+  case $net in
+    Rescan)
+      SCAN=`mktemp /tmp/wpaconf/scanXXXXXX`
+      SCAN2=`mktemp /tmp/wpaconf/scanXXXXXX`
+      wpa_cli -i "$IFCUR" scan_results >$SCAN
+
+      echo '$DIALOG --output-fd 3 --menu "Select a network to connect to, or rescan." 0 0 0 \' >$SCAN2
+      cat $SCAN |awk '{if (NF==5) print $1 "\t\""$5"\" \\";
+                  else if (NF==4) print $1 "\t\"" $4"\" \\"; }' >>$SCAN2
+      echo 'Rescan "for more networks" 3>$CTRL' >>$SCAN2
+      true >$CTRL
+      . $SCAN2
+      read net <$CTRL
+      ;;
+    *:*:*:*)
+      NET="`awk '{if ($1 == "'$net'") print $NF}' <$SCAN`"
+      #network_add $NET
+      case `awk '{if ($1 == "'$net'") if (NF == 5) print $4; else print "open"}' <$SCAN` in
+      	*WPA*PSK*) net_add_wpa $NET
+	;;
+	*WEP*) net_add_wep $NET
+	;;
+	open) net_add_open $NET
+      esac
+      net=Rescan
+      ;;
+   esac
+done
+rm -f $SCAN $SCAN2
+)
+
+#initialize before main loop
+CTRL=`mktemp /tmp/wpaconf/ctrlXXXXXX`
+cmd=maindummy
+NEWCF=`mktemp /tmp/wpaconf/confXXXXXX`
+newconf
+setif
+test -n "$IFCUR" || exit 1
+
+#Now, main loop:
+while test -n "$cmd"
+	do	true >$CTRL
+		exec 3>$CTRL
+		$DIALOG --output-fd 3 --menu "Select an operation:" 0 0 0 \
+		  1 scan 2 disconnect 3 reassociate \
+		  4 "change interface ($IFCUR)" 5 "add network" \
+		  6 "load new config file" 7 "save config file" 8 "view config file"
+		exec 3<&-
+		read cmd <$CTRL
+		case $cmd in
+			1) scanner
+			;;
+			2) wpa_cli -i $IFCUR disconnect
+			;;
+			3) wpa_cli -i $IFCUR reassociate
+			;;
+			4) setif
+			;;
+			5) network_add
+			;;
+			6) loadconfig
+			;;
+			7) saveconfig
+			;;
+			8) $DIALOG --scrollbar --textbox $NEWCF 0 0
+			;;
+		esac
+	done
