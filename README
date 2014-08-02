@@ -23,6 +23,18 @@ wpanet is not a complete network manager; you will need to configure
 wpa_supplicant yourself, and may also need to configure ifup.
 But if you want to use it in a more complete tool, feel free.
 
+For configuring wpa_supplicant, there is a dialog-based script
+named wpa_config. It mainly allows adding open, WEP, or WPA-PSK
+networks to your config file; it does not manage the wpanet service
+or start/stop wpa_supplicant.
+If you create a new config file with it (or  select 
+"load new config file" > "other browse for file" and load a file that way),
+the resulting wpa_supplicant config file should be adequate.
+Otherwise, we blindly assume that you have a working config.
+
+Once wpanet starts properly, you should be able to use wpa_cli or wpa_gui,
+which are configuration interfaces provided by wpa-supplicant.
+
 Quick start:
 I'm assuming that wpa_supplicant has a working configuration in 
 /etc/wpa_supplicant/wpa_supplicant.conf, is able to connect, and that 
@@ -31,7 +43,7 @@ you are using standard Linux wireless drivers.
 Make sure that /etc/wpa_supplicant/wpa_supplicant.conf has a line like this:
 ctrl_interface=/var/run/wpa_supplicant
 Or like this:
-DIR=/var/run/wpa_supplicant GROUP=network
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=network
 
 Make sure that wlan0 or whatever else your wireless interface is called
 is *NOT* configured in /etc/network/interfaces (if you need to use ifup,
@@ -66,5 +78,3 @@ This means:
    connects, configure it in /etc/wpa/interfaces as you would in
    /etc/network/interfaces
 This should be enough configuration for the ifup integration.
-
-
