@@ -11,16 +11,22 @@ it will present you with a series of dialog menus.
 
 The first simply asks which network interface you would like to use;
 you can change this later from the main menu.
+The second asks which configuration file you would like to load;
+this can also be changed from the main menu.
 
 Next, you get a menu asking what you would like to do.
-You can scan for networks, disconnect/reconnect,
-change the network interface in use,
+You can change the network interface in use,
+scan for networks, disconnect/reconnect,
 add a wireless network without scanning, or load/save/view the
 wpa_supplicant config file.
 
 If you want to connect to an available network, select "scan".
 Then you can select a network and press "OK", at which point you should
 be configuring the right network with the right type of encryption.
+
+To connect to a hidden network or configure any network without scanning,
+select "Add network", enter the SSID, select the encryption type, and
+if needed enter the key.
 
 .SH ENVIRONMENT
 .IP DIALOG
@@ -33,13 +39,6 @@ kdialog, gdialog, and zenity are likely to be inadequate.
 wpa_config and this manpage were written in 2014 by Isaac Dunham, who
 released both into the public domain via CC0.
 .SH BUGS
-wpa_config loads a new config file by default.
-
-wpa_config edits the config file directly so as to preserve comments
-but it does not trigger a reload of the config file.
-To be precise, wpa_config appends to a copy of the config file,
-then overwrites the file selected to save it to.
-
 Adding hidden networks from the "scan" menu is not supported.
 You will need to select "add network" from the main menu instead.
 If you want to help with this, please provide the results of

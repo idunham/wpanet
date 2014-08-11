@@ -72,6 +72,7 @@ case $conf in
 	global)	cat $NEWCF >/etc/wpa_supplicant/wpa_supplicant.conf
 	;;
 	local)	cat $NEWCF >/etc/wpa/$IFCUR.conf
+		wpa_cli -i $IFCUR reconfigure
 	;;
 	other)	true >$CTRL
 		$DIALOG --output-fd 3 --fselect /etc 20 60 3>$CTRL
@@ -84,6 +85,8 @@ case $conf in
 		esac
 	;;
 esac
+test "$conf" = "local" || for IF in `ls /var/run/wpa_supplicant/ 2>/dev/null`
+	do wpa_cli -i $IF reconfigure; done
 }
 
 
@@ -203,7 +206,7 @@ rm -f $SCAN $SCAN2
 CTRL=`mktemp /tmp/wpaconf/ctrlXXXXXX`
 cmd=maindummy
 NEWCF=`mktemp /tmp/wpaconf/confXXXXXX`
-newconf
+loadconfig
 setif
 test -n "$IFCUR" || exit 1
 
@@ -212,19 +215,19 @@ while test -n "$cmd"
 	do	true >$CTRL
 		exec 3>$CTRL
 		$DIALOG --output-fd 3 --menu "Select an operation:" 0 0 0 \
-		  1 scan 2 disconnect 3 reassociate \
-		  4 "change interface ($IFCUR)" 5 "add network" \
+		  1 "change interface ($IFCUR)" \
+		  2 disconnect 3 reassociate 4 scan 5 "add network" \
 		  6 "load new config file" 7 "save config file" 8 "view config file"
 		exec 3<&-
 		read cmd <$CTRL
 		case $cmd in
-			1) scanner
+			1) setif
 			;;
 			2) wpa_cli -i $IFCUR disconnect
 			;;
 			3) wpa_cli -i $IFCUR reassociate
 			;;
-			4) setif
+			4) scanner
 			;;
 			5) network_add
 			;;
