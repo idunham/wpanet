@@ -1,0 +1,62 @@
+.\" Released under CC0 by Isaac Dunham, A.D. 2014
+.TH WPA_CONFIG 8 "August 2014" "wpanet" "System Administration"
+.SH NAME
+wpa_config \- a more friendly tool to configure wpa_supplicant
+.SH SYNOPSIS
+.B wpa_config
+.SH DESCRIPTION
+When you run
+.B wpa_config,
+it will present you with a series of dialog menus.
+
+The first simply asks which network interface you would like to use;
+you can change this later from the main menu.
+
+Next, you get a menu asking what you would like to do.
+You can scan for networks, disconnect/reconnect,
+change the network interface in use,
+add a wireless network without scanning, or load/save/view the
+wpa_supplicant config file.
+
+If you want to connect to an available network, select "scan".
+Then you can select a network and press "OK", at which point you should
+be configuring the right network with the right type of encryption.
+
+.SH ENVIRONMENT
+.IP DIALOG
+selects which dialog implementation to use.
+
+wpa_config has been tested with Thomas Dickey's cdialog (the standard dialog),
+but it should also work with Xdialog or whiptail.
+kdialog, gdialog, and zenity are likely to be inadequate.
+.SH AUTHOR
+wpa_config and this manpage were written in 2014 by Isaac Dunham, who
+released both into the public domain via CC0.
+.SH BUGS
+wpa_config loads a new config file by default.
+
+wpa_config edits the config file directly so as to preserve comments
+but it does not trigger a reload of the config file.
+To be precise, wpa_config appends to a copy of the config file,
+then overwrites the file selected to save it to.
+
+Adding hidden networks from the "scan" menu is not supported.
+You will need to select "add network" from the main menu instead.
+If you want to help with this, please provide the results of
+.nf
+wpa_cli <interface> scan
+wpa_cli <interface> scan_results
+.if
+as I need to parse wpa_cli scan_results to identify hidden networks.
+
+DIALOG is always set by the script.
+.SH AVAILABILITY
+wpa_config is distributed with the wpanet package, available from
+http://github.com/idunham/wpanet
+.SH SEE ALSO
+.BR wpa_supplicant.conf (5),
+.BR wpa_passphrase (8),
+.BR wpa_cli (8),
+.BR wpa_supplicant (8),
+.BR wpa_dhcp (8),
+.BR wpanet (8)

@@ -1,0 +1,61 @@
+.\" Released under CC0 by Isaac Dunham, A.D. 2014
+.TH WPA_DHCP 8 "August 2014" "wpanet" "System Administration"
+.SH NAME
+wpa_dhcp \- wpanet tool for acquiring an IP
+.SH SYNOPSIS
+.nf
+  wpa_cli -i IF0 -a /sbin/wpa_dhcp 
+  wpa_dhcp IF0 CONNECTED | DISCONNECTED | stop
+.fi
+.SH DESCRIPTION
+wpa_dhcp is an "action script" for wpa_cli, used by wpanet to acquire an IP
+address. Hence the first usage in the SYNOPSIS.
+
+When wpa_cli is started in the way shown, it will run the action script whenever
+wpa_supplicant connects or disconnects with the network interface
+as the first argument and either CONNECTED or DISCONNECTED
+as the second argument, depending on what happened.
+
+At this point, wpa_dhcp will check /etc/wpa/interfaces to see if the interface
+was configured there; if it was, wpa_dhcp will run 
+.nf
+  ifup -i /etc/wpa/interfaces IF0 
+.fi
+to configure it.
+
+If  the interface is NOT configured in /etc/wpa/interfaces, wpa_dhcp will
+try to configure it using udhcpc.
+
+wpa_dhcp currently ignores DISCONNECTED events; this is a historical choice
+made because with extremely bad reception, the time spent on DHCP connection
+ended up being too much for practical use.
+
+It is also possible to stop wpa_supplicant using the command:  
+.nf
+  wpa_dhcp IF0 stop 
+.fi
+.SH LICENSE
+Public domain/CC0
+.SH AUTHOR
+Isaac Dunham
+.SH HISTORY
+Isaac Dunham wrote wpa_dhcp in 2012 after getting the general picture of
+how Debian's wpa_action "action script" worked.
+In 2014, he added support for using ifup.
+.SH BUGS
+Since I haven't bothered using anything beyond ifup and udhcpc,
+all networks must have the same configuration method.
+Ideally, there would be a tool that detects the current SSID, looks it up,
+and determines the configuration on that basis.
+
+If I added "start" as a synonym for CONNECTED, wpa_dhcp would work
+with ifplugd (at least in theory).
+.SH AVAILABILITY
+wpa_config is distributed with the wpanet package, available from
+http://github.com/idunham/wpanet
+.SH SEE ALSO
+.BR ifconfig (8),
+.BR ifup (8),
+.BR wpa_cli (8),
+.BR wpa_supplicant (8),
+.BR wpanet (8)

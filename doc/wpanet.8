@@ -1,0 +1,78 @@
+.\" Released under CC0 by Isaac Dunham, A.D. 2014
+.TH WPANET 8 "August 2014" "wpanet" "System Administration"
+.SH NAME
+wpanet \- a service to connect to wireless internet
+.SH SYNOPSIS
+.nf
+service wpanet start 
+service wpanet stop 
+service wpanet info 
+.fi
+.SH DESCRIPTION
+.B wpanet
+is a sysvinit or openrc initscript that configures one or more network
+interfaces via wpa_supplicant.
+To time configuring an interface right, wpanet calls 
+.nf
+  wpa_cli -a /sbin/wpa_dhcp 
+.fi
+which will run wpa_dhcp to get an IP once the connection is complete.
+
+Besides the usual initscript arguments (start, stop, status, restart...),
+wpanet supports "info"; this gives a colorized summary of the status
+of each configured interface.
+
+IP addresses are managed by wpa_dhcp separately.
+.SH FILES
+.nf
+/etc/conf.d/wpanet is the standard config file for wpanet.
+/etc/wpa_supplicant/wpa_supplicant.conf is the standard config file for
+wpa_supplicant.
+/etc/wpa/<interface>.conf is an alternate location for config files for
+wpa_supplicant.
+.fi
+.SH ENVIRONMENT
+These variables can be set in /etc/conf.d/wpanet:
+.IP WPA_CFG
+selects a global configuration file for wpa_supplicant;
+by default, this is set to /etc/wpa_supplicant/wpa_supplicant.conf
+
+If this variable is not set, wpanet falls back to "local" (per-interface)
+configuration files, found in /etc/wpa/<interface>.conf
+.IP IFACES
+is a list of all interfaces that wpa_supplicant should configure.
+
+By default, this is unset and wpanet uses all wireless devices;
+people who plan to run hostapd should set this to only those interfaces
+that they want to use in managed mode.
+.IP DRIVER
+sets the wpa_supplicant driver.
+
+This is autodetected by default, but if you need to you can set this.
+Ordinarily, -Dwext or -Dnl80211 is appropriate; see your wpa_supplicant
+documentation for a list of all drivers.
+.SH LICENSE
+Public domain/CC0
+.SH AUTHOR
+Isaac Dunham.
+.SH HISTORY
+Isaac Dunham wrote the core of wpanet in 2012/2013, after finding that
+running a DHCP client at the wrong time could cause a kernel panic with
+the madwifi drivers. This version was very minimal and did not support
+configuration except for editing the script.
+
+In summer 2014, he updated it to add configuration, ported to OpenRC, and
+added a raft of features.
+
+.SH BUGS
+I hope not, but there probably are.
+.SH AVAILABILITY
+wpanet is part of the wpanet package, available from
+http://github.com/idunham/wpanet
+.SH SEE ALSO
+.BR wpa_supplicant.conf (5),
+.BR wpa_passphrase (8),
+.BR wpa_cli (8),
+.BR wpa_supplicant (8),
+.BR wpa_dhcp (8),
+.BR wpa_config (8)
